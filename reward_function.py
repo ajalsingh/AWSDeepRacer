@@ -1,4 +1,6 @@
-import math 
+import math
+
+from numpy import diff 
 
 def reward_function(params):
     
@@ -343,9 +345,40 @@ def reward_function(params):
         y_diff = abs(current_pos[1]-ideal_pos[1])
         dist = math.sqrt(x_diff**2 + y_diff**2)
 
-        reward = 2 - dist
+        reward = 0.5 - dist
 
         return float(reward)
+
+    def pure_pursuit(closest_waypoints, ideal_racing_line, heading, x,y):    
+        reward = 1e-3
+            
+        rabbit = [0,0]
+        pointing = [0,0]
+
+        # Reward when yaw (car_orientation) is pointed to the next waypoint IN FRONT.
+        
+        # Find nearest waypoint coordinates
+        index = closest_waypoints[1]
+        rabbit = ideal_racing_line[index]
+        
+        radius = math.hypot(x - rabbit[0], y - rabbit[1])
+        
+        pointing[0] = x + (radius * math.cos(heading))
+        pointing[1] = y + (radius * math.sin(heading))
+        
+        vector_delta = math.hypot(pointing[0] - rabbit[0], pointing[1] - rabbit[1])
+        
+        # Max distance for pointing away will be the radius * 2
+        # Min distance means we are pointing directly at the next waypoint
+        # We can setup a reward that is a ratio to this max.
+            
+        if vector_delta == 0:
+            reward += 1
+        else:
+            reward += ( 1 - ( vector_delta / (radius * 2)))
+
+        return reward
+
     
-    reward = racing_line(ideal_racing_line, x,y, closest_waypoints) + correct_direction(waypoints, closest_waypoints, heading) + fast_steps(steps, progress) + punish_undesired_actions(all_wheels_on_track, is_offtrack, is_reversed)
+    reward = pure_pursuit(closest_waypoints, heading, x,y) + racing_line(ideal_racing_line, x,y, closest_waypoints) + correct_direction(waypoints, closest_waypoints, heading) + fast_steps(steps, progress) + punish_undesired_actions(all_wheels_on_track, is_offtrack, is_reversed)
     return reward
